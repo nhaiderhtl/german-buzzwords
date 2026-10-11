@@ -1,0 +1,652 @@
+<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#fff;color:#000}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
+<title>Textanalyse-Trainer</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:wght@400;700&family=Bricolage+Grotesque:opsz,wght@12..96,600..800&family=Caveat:wght@500;700&display=swap">
+<style>
+/* Layout: eine Heftspalte. Karteikarten mit roter Kopflinie und blauer Lineatur,
+   Quiz-Feedback wie Randbemerkungen mit Korrekturstift, Fortschritt als Lineal. */
+:root{
+  --bg:#E6ECF4; --surface:#F4F7FB; --card:#FFFFFF;
+  --ink:#16233F; --ink-2:#4B5A76; --on-ink:#FFFFFF;
+  --line:#C3D3E8; --rule:#D3E1F2;
+  --accent:#C93B28; --ok:#1E7A4C; --ok-bg:#DCF1E4; --bad-bg:#FBE3DF;
+  --mark:#FFE67D;
+  --f-display:"Bricolage Grotesque","Trebuchet MS",system-ui,sans-serif;
+  --f-body:"Atkinson Hyperlegible","Segoe UI",system-ui,sans-serif;
+  --f-hand:"Caveat","Segoe Print","Bradley Hand",cursive;
+  --rl:1.75rem; --head:3rem;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#0E1420; --surface:#151D2E; --card:#1A2336;
+    --ink:#E8EEF9; --ink-2:#9FACC6; --on-ink:#0E1420;
+    --line:#2C3A58; --rule:#263250;
+    --accent:#FF7B66; --ok:#62D69A; --ok-bg:#15392A; --bad-bg:#43211D;
+    --mark:#6B5B12; color-scheme:dark;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#0E1420; --surface:#151D2E; --card:#1A2336;
+  --ink:#E8EEF9; --ink-2:#9FACC6; --on-ink:#0E1420;
+  --line:#2C3A58; --rule:#263250;
+  --accent:#FF7B66; --ok:#62D69A; --ok-bg:#15392A; --bad-bg:#43211D;
+  --mark:#6B5B12; color-scheme:dark;
+}
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--ink);font-family:var(--f-body);font-size:1rem;line-height:1.5}
+button{font-family:inherit}
+.wrap{max-width:46rem;margin-inline:auto;padding-inline:1rem;padding-block:1.5rem 3rem}
+.sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+mark{background:var(--mark);color:inherit;padding:0 .12em;border-radius:2px;-webkit-box-decoration-break:clone;box-decoration-break:clone}
+:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
+
+/* Kopf */
+.top{display:flex;flex-wrap:wrap;gap:1rem 2rem;align-items:flex-end;justify-content:space-between;margin-bottom:1.25rem}
+.top h1{margin:0;font:800 clamp(1.7rem,6vw,2.3rem)/1.05 var(--f-display);letter-spacing:-.02em;text-wrap:balance}
+.top .sub{margin:.35rem 0 0;color:var(--ink-2)}
+.prog{flex:1 1 14rem;max-width:20rem;min-width:0}
+.prog .lbl{display:flex;justify-content:space-between;gap:.5rem;font-size:.8125rem;color:var(--ink-2);margin-bottom:.35rem;font-variant-numeric:tabular-nums}
+.ruler{position:relative;height:1.1rem;border:1.5px solid var(--ink);border-radius:2px;background:var(--surface);overflow:hidden}
+.ruler .fill{position:absolute;inset:0 auto 0 0;width:0;background:color-mix(in srgb,var(--ok) 40%,transparent);border-right:2px solid var(--ok);transition:width .4s}
+.ruler::after{content:"";position:absolute;inset:0;background:repeating-linear-gradient(to right,var(--ink) 0 1px,transparent 1px 5%) bottom/100% 45% no-repeat;pointer-events:none}
+
+/* Tabs */
+.tabs{display:flex;gap:.25rem;border-bottom:2px solid var(--ink);margin-bottom:.9rem}
+.tab{font:700 1rem var(--f-body);padding:.6rem .9rem;background:none;border:0;border-bottom:4px solid transparent;margin-bottom:-2px;color:var(--ink-2);cursor:pointer;border-radius:6px 6px 0 0}
+.tab:hover{color:var(--ink)}
+.tab[aria-selected="true"]{color:var(--ink);border-bottom-color:var(--accent)}
+
+/* Themenwahl */
+.topics{margin-bottom:1rem;border:1.5px solid var(--line);border-radius:6px;background:var(--surface)}
+.topics summary{display:flex;justify-content:space-between;gap:1rem;padding:.6rem .85rem;cursor:pointer;font-weight:700;list-style:none}
+.topics summary::-webkit-details-marker{display:none}
+.topics .cnt{font-weight:400;color:var(--ink-2);font-variant-numeric:tabular-nums;text-align:right}
+.chips{display:flex;flex-wrap:wrap;gap:.5rem;padding:.2rem .85rem .85rem}
+.chip{font:700 .875rem var(--f-body);padding:.4rem .75rem;border:1.5px solid var(--line);border-radius:999px;background:var(--card);color:var(--ink);cursor:pointer}
+.chip[aria-pressed="true"]{background:var(--ink);color:var(--on-ink);border-color:var(--ink)}
+
+/* Allgemeine Bausteine */
+.bar{display:flex;flex-wrap:wrap;gap:.75rem 1rem;align-items:center;justify-content:space-between;margin-bottom:.9rem}
+.count{color:var(--ink-2);font-variant-numeric:tabular-nums}
+.seg{display:flex;border:1.5px solid var(--ink);border-radius:6px;overflow:hidden;max-width:100%}
+.seg button{flex:1 1 auto;font:700 .9rem var(--f-body);padding:.45rem .8rem;border:0;background:var(--card);color:var(--ink);cursor:pointer}
+.seg button+button{border-left:1.5px solid var(--ink)}
+.seg button[aria-pressed="true"]{background:var(--ink);color:var(--on-ink)}
+.btn{font:700 1rem var(--f-body);padding:.65rem 1.15rem;border:1.5px solid var(--ink);border-radius:6px;background:var(--card);color:var(--ink);cursor:pointer}
+.btn:hover:not(:disabled){background:var(--surface)}
+.btn.primary{background:var(--ink);color:var(--on-ink)}
+.btn.primary:hover:not(:disabled){background:var(--ink);filter:brightness(1.15)}
+.btn.good{background:var(--ok);border-color:var(--ok);color:#fff}
+.btn.good:hover:not(:disabled){background:var(--ok);filter:brightness(1.1)}
+.btn.again{border-color:var(--accent);color:var(--accent)}
+.btn.quiet{border-color:var(--line);color:var(--ink-2);font-weight:400;font-size:.9rem;padding:.45rem .8rem}
+.btn:disabled{opacity:.4;cursor:not-allowed}
+.row{display:flex;flex-wrap:wrap;gap:.75rem}
+.eyebrow{margin:0;font-size:.75rem;font-weight:700;letter-spacing:.09em;text-transform:uppercase;color:var(--ink-2)}
+.pen{margin:0;font:700 2rem/1.1 var(--f-hand);color:var(--accent)}
+.muted{color:var(--ink-2);margin:.25rem 0 0}
+.dots{display:inline-flex;gap:4px;align-items:center}
+.dots i{width:.6rem;height:.6rem;border-radius:50%;border:1.5px solid var(--ink-2)}
+.dots i.on{background:var(--ok);border-color:var(--ok)}
+.panel{background:var(--card);border:1.5px solid var(--line);border-radius:6px;padding:1.25rem;display:flex;flex-direction:column;gap:.9rem}
+.panel h2,.panel h3{margin:0;font:700 1.35rem/1.2 var(--f-display)}
+.panel p{margin:0}
+
+/* Karteikarte */
+.stage{perspective:1400px;margin-bottom:1rem}
+.fc{display:grid;position:relative;min-height:20rem;cursor:pointer;transform-style:preserve-3d;transition:transform .55s cubic-bezier(.3,.7,.2,1)}
+.fc.flipped{transform:rotateY(180deg)}
+.fc:focus-visible{outline:3px solid var(--accent);outline-offset:5px;border-radius:6px}
+.face{grid-area:1/1;position:relative;min-width:0;background:var(--card);border:1.5px solid var(--line);border-radius:6px;box-shadow:0 14px 26px -18px rgba(8,16,40,.55);backface-visibility:hidden;-webkit-backface-visibility:hidden;padding:0 1.5rem 1.25rem;display:flex;flex-direction:column}
+.face.back{transform:rotateY(180deg)}
+.face::before{content:"";position:absolute;left:0;right:0;top:var(--head);height:2px;background:var(--accent)}
+.face::after{content:"";position:absolute;left:0;right:0;top:calc(var(--head) + 2px);bottom:0;background:repeating-linear-gradient(to bottom,transparent 0 calc(var(--rl) - 1px),var(--rule) calc(var(--rl) - 1px) var(--rl));border-radius:0 0 5px 5px;pointer-events:none}
+.face>*{position:relative;z-index:1}
+.fhead{height:var(--head);display:flex;align-items:center;justify-content:space-between;gap:.75rem}
+.topic{font-size:.75rem;font-weight:700;letter-spacing:.09em;text-transform:uppercase;color:var(--ink-2)}
+.fbody{padding-top:var(--rl);display:flex;flex-direction:column;gap:var(--rl);flex:1}
+.fbody p{margin:0}
+.big{font:800 clamp(1.7rem,7vw,2.5rem)/3.5rem var(--f-display);letter-spacing:-.015em;overflow-wrap:anywhere}
+.big.small{font-size:clamp(1.4rem,5.5vw,1.9rem);line-height:3.5rem}
+.def{font-size:1.0625rem;line-height:var(--rl)}
+.hand{font:500 1.5rem/var(--rl) var(--f-hand)}
+.tip{font-size:.9375rem;line-height:var(--rl);color:var(--ink-2)}
+.hint{margin-top:auto;font-size:.8125rem;color:var(--ink-2)}
+.keys{display:none;color:var(--ink-2);font-size:.8125rem;margin-top:1rem}
+@media (hover:hover){.keys{display:block}}
+
+/* Quiz */
+.qhead{display:flex;flex-wrap:wrap;gap:.5rem 1rem;justify-content:space-between;align-items:baseline;margin-bottom:.6rem;font-variant-numeric:tabular-nums}
+.segs{display:flex;gap:4px;margin-bottom:1rem}
+.segs span{flex:1;height:.5rem;border-radius:2px;border:1.5px solid var(--ink-2);background:transparent;min-width:0}
+.segs span.r{background:var(--ok);border-color:var(--ok)}
+.segs span.w{background:var(--accent);border-color:var(--accent)}
+.segs span.cur{border-color:var(--ink);background:var(--ink)}
+.qcard{display:flex;flex-direction:column;gap:.75rem;background:var(--card);border:1.5px solid var(--line);border-radius:6px;padding:1.1rem 1.25rem;margin-bottom:1rem}
+.sample{margin:0;font:500 1.6rem/1.3 var(--f-hand)}
+.termbig{margin:0;font:800 clamp(1.7rem,7vw,2.4rem)/1.1 var(--f-display);letter-spacing:-.015em;overflow-wrap:anywhere}
+.ask{margin:0;font:700 1.0625rem/1.3 var(--f-body)}
+.opts{display:flex;flex-direction:column;gap:.6rem;margin-bottom:1rem}
+.opt{display:grid;grid-template-columns:auto 1fr;gap:.8rem;align-items:start;text-align:left;width:100%;padding:.75rem .9rem;border:1.5px solid var(--ink);border-radius:6px;background:var(--card);color:var(--ink);font-size:1rem;line-height:1.4;cursor:pointer}
+.opt:hover:not(:disabled){background:var(--surface)}
+.opt:disabled{cursor:default;color:var(--ink)}
+.opt .num{display:inline-grid;place-items:center;width:1.7rem;height:1.7rem;border:1.5px solid var(--ink-2);border-radius:4px;font-size:.8125rem;font-weight:700;color:var(--ink-2)}
+.opt .otxt{min-width:0;overflow-wrap:anywhere;display:flex;flex-direction:column;gap:.35rem}
+.opt .otxt.bold{font-weight:700}
+.opt .tag{align-self:flex-start;font-size:.75rem;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--ink-2);border:1.5px solid var(--line);border-radius:4px;padding:.05rem .4rem}
+.opt.right{background:var(--ok-bg);border-color:var(--ok)}
+.opt.right .num{background:var(--ok);border-color:var(--ok);color:#fff}
+.opt.wrong{background:var(--bad-bg);border-color:var(--accent)}
+.opt.wrong .num{background:var(--accent);border-color:var(--accent);color:var(--on-ink)}
+.opt.dim{opacity:.6}
+.fb{display:flex;flex-direction:column;gap:.7rem;padding:1rem 1.25rem;border-radius:6px;border:1.5px solid var(--line);background:var(--surface)}
+.fb.good .pen{color:var(--ok)}
+.fb p{margin:0}
+.fb .def{line-height:1.5}
+.fb .tip{line-height:1.5}
+.grade-wrap{display:flex;flex-wrap:wrap;align-items:center;gap:1.25rem}
+.grade{display:inline-grid;place-items:center;width:5.5rem;height:5.5rem;border:4px solid var(--accent);border-radius:50%;font:700 3.4rem/1 var(--f-hand);color:var(--accent);transform:rotate(-7deg)}
+.miss{border-top:1.5px solid var(--line);padding-top:.8rem;display:flex;flex-direction:column;gap:.3rem}
+.miss h4{margin:0;font:700 1.05rem var(--f-display)}
+.miss .hand{font-size:1.35rem;line-height:1.3}
+
+/* Übersicht */
+.search input{width:100%;padding:.7rem .9rem;border:1.5px solid var(--ink);border-radius:6px;background:var(--card);color:var(--ink);font:inherit;margin-bottom:1rem}
+.group{margin-bottom:1.4rem}
+.group h3{margin:0 0 .5rem;font:700 .8125rem var(--f-body);letter-spacing:.09em;text-transform:uppercase;color:var(--ink-2)}
+.term{border:1.5px solid var(--line);border-radius:6px;background:var(--card);margin-bottom:.5rem}
+.term summary{display:flex;justify-content:space-between;align-items:center;gap:1rem;padding:.65rem .9rem;cursor:pointer;list-style:none;font:700 1.05rem var(--f-display)}
+.term summary::-webkit-details-marker{display:none}
+.term[open] summary{border-bottom:1.5px solid var(--line)}
+.term .body{display:flex;flex-direction:column;gap:.6rem;padding:.8rem .9rem 1rem}
+.term .body p{margin:0}
+.term .hand{font-size:1.4rem;line-height:1.3}
+.empty{color:var(--ink-2);padding:1rem 0}
+.reset{margin-top:2rem;display:flex;flex-wrap:wrap;gap:.6rem;align-items:center;color:var(--ink-2);font-size:.9rem}
+.note{margin-top:1.5rem;color:var(--ink-2);font-size:.8125rem}
+
+@media (max-width:30rem){
+  .face{padding:0 1rem 1rem}
+  .panel{padding:1rem}
+}
+@media (prefers-reduced-motion:reduce){
+  .fc,.ruler .fill{transition:none}
+}
+</style>
+
+<div class="wrap">
+  <header class="top">
+    <div>
+      <h1>Textanalyse-Trainer</h1>
+      <p class="sub">4. Klasse Deutsch, alle Begriffe aus dem Glossar</p>
+    </div>
+    <div class="prog">
+      <div class="lbl"><span>Sicher gelernt</span><span id="progTxt"></span></div>
+      <div class="ruler" role="progressbar" aria-label="Sicher gelernte Begriffe" aria-valuemin="0" aria-valuemax="100" id="ruler"><div class="fill" id="fill"></div></div>
+    </div>
+  </header>
+
+  <nav class="tabs" role="tablist" aria-label="Lernmodus">
+    <button class="tab" role="tab" data-act="tab" data-v="cards" id="tab-cards" aria-selected="true">Karteikarten</button>
+    <button class="tab" role="tab" data-act="tab" data-v="quiz" id="tab-quiz" aria-selected="false">Quiz</button>
+    <button class="tab" role="tab" data-act="tab" data-v="list" id="tab-list" aria-selected="false">Alle Begriffe</button>
+  </nav>
+
+  <details class="topics" id="topics">
+    <summary id="tsum"></summary>
+    <div class="chips" id="chips"></div>
+  </details>
+
+  <main id="view" role="tabpanel" aria-live="polite"></main>
+</div>
+
+<script>
+(function(){
+'use strict';
+
+/*DATA*/
+var TOPICS=[
+  {k:'einl',l:'Einleitung'},
+  {k:'aufbau',l:'Aufbau'},
+  {k:'arg',l:'Argumentation'},
+  {k:'unser',l:'Unseriöse Argumente'},
+  {k:'fig',l:'Figuren'},
+  {k:'satz',l:'Satzbau'},
+  {k:'wort',l:'Stil und Wortwahl'},
+  {k:'rhet',l:'Rhetorische Mittel'},
+  {k:'schluss',l:'Schlussteil'}
+];
+
+/* id, Thema, Begriff, Erklärung, Beispiel ([[...]] = Erkennungsmerkmal), Merkhilfe */
+var RAW=[
+['textart','einl','Textart','Sagt, um welche Art von Text es sich handelt, zum Beispiel Rede, Kommentar, Gedicht oder Zeitungsbericht.','Bei dem vorliegenden Text handelt es sich um [[eine politische Rede]].','Steht gleich im ersten Satz der Einleitung.'],
+['entstehung','einl','Entstehungszeit und -ort','Wann und wo der Text geschrieben oder veröffentlicht wurde.','Der Text erschien [[1989]] in [[Berlin]].',''],
+['kontext','einl','Historischer Kontext','Die geschichtlichen Ereignisse und Umstände zur Zeit des Textes. Sie helfen dir, den Text besser zu verstehen.','Ein Text über Freiheit aus dem Jahr 1989 hängt mit [[der deutschen Teilung und dem nahenden Mauerfall]] zusammen.','Zeit und Ort sind nur Daten. Der Kontext erklärt, was damals los war.'],
+['deutung','einl','Deutungshypothese','Eine erste Vermutung, worum es im Text geht und was er bewirken will. Du stellst sie in der Einleitung auf und prüfst sie später.','[[Vermutlich]] will der Text die Leser zum Nachdenken über Umweltschutz anregen.','Erkennbar an Wörtern wie „vermutlich“, „wahrscheinlich“ oder „könnte“.'],
+
+['gliederung','aufbau','Gliederung','Die Einteilung des Textes in Teile, zum Beispiel in Absätze oder Kapitel.','Der Text ist in [[fünf Absätze mit eigenen Überschriften]] gegliedert.','Gliederung: Wie ist der Text eingeteilt? Sinnabschnitt: Worum geht es in einem Teil?'],
+['klassisch','aufbau','Klassischer Aufbau','Die Standardform eines Textes: Einleitung, Hauptteil, Schluss.','Der Text [[beginnt mit dem Thema, entwickelt es im Mittelteil und endet mit einem Fazit]].',''],
+['sinnabschnitte','aufbau','Sinnabschnitte','Teile des Textes, in denen jeweils ein Gedanke behandelt wird. Ein Sinnabschnitt kann länger oder kürzer als ein Absatz sein.','[[Zeile 1–6]]: Der Autor beschreibt das Problem. [[Zeile 7–12]]: Er nennt mögliche Lösungen.',''],
+['kernaussagen','aufbau','Kernaussagen','Die wichtigsten Gedanken eines Abschnitts oder des ganzen Textes, kurz in einem Satz gesagt.','[[Die Kernaussage des Absatzes ist, dass Bildung Armut verhindern kann.]]','Frage dich: Was soll ich nach diesem Absatz auf jeden Fall behalten?'],
+['spannungsbogen','aufbau','Spannungsbogen','Der Verlauf der Spannung vom Anfang bis zum Ende des Textes.','In der Kurzgeschichte [[steigt die Spannung Schritt für Schritt an]], bis sie am Ende aufgelöst wird.','Spannungsbogen ist der ganze Verlauf. Der Höhepunkt ist nur die Spitze.'],
+['hoehepunkt','aufbau','Höhepunkt','Die Stelle mit der größten Spannung im Text.','Der Moment, in dem [[der Held endlich entdeckt wird]], ist die spannendste Stelle der Geschichte.','Höhepunkt: am spannendsten. Wendepunkt: danach geht es in eine andere Richtung.'],
+['wendepunkt','aufbau','Wendepunkt','Die Stelle, an der die Handlung eine neue Richtung nimmt.','Erst wollte er nicht mitmachen, doch dann [[ändert er seine Meinung]]. Ab da verläuft die Geschichte ganz anders.','Hier „dreht“ sich etwas. Es muss nicht die spannendste Stelle sein.'],
+['argstrategie','aufbau','Argumentationsstrategie','Die Art, wie der Autor seine Argumente ordnet, um zu überzeugen.','Der Autor beginnt mit einem schwachen Argument und [[steigert sich bis zum stärksten am Schluss]].',''],
+
+['fakten','arg','Faktenargument','Ein Argument, das sich auf überprüfbare Fakten stützt, zum Beispiel Zahlen, Daten oder Studien.','[[Laut Statistik gab es 30 % weniger Unfälle]], seit Tempo 30 gilt.','Zahlen und Daten: Man kann es nachprüfen.'],
+['normativ','arg','Normatives Argument','Ein Argument, das sich auf Werte, Normen oder Regeln beruft: Was richtig oder falsch ist.','Man [[sollte]] die Umwelt schützen, weil [[es unsere moralische Pflicht ist]].','Erkennbar an „sollte“, „muss“, „Pflicht“, „richtig“.'],
+['autoritaet','arg','Autoritätsargument','Ein Argument, das sich auf eine anerkannte Person oder Expertin beruft.','[[Laut einem bekannten Klimaforscher]] steigt der Meeresspiegel weiter an.','Es wird jemand Bekanntes oder ein Experte genannt.'],
+['analogie','arg','Analogisierendes Argument','Ein Argument, das einen Vergleich mit einer ähnlichen Situation zieht.','[[So wie ein Arzt eine Krankheit früh behandeln muss]], muss auch die Politik früh gegen den Klimawandel handeln.','Erkennbar an „so wie … so auch“.'],
+['indirekt','arg','Indirektes Argument','Man zeigt, dass die Gegenposition nicht stimmen kann, und stärkt dadurch die eigene Meinung.','Wer behauptet, Home-Office funktioniere nicht, [[übersieht die vielen Firmen, die damit erfolgreich arbeiten]].','Das Gegenteil wird als falsch oder unsinnig gezeigt.'],
+['plausibel','arg','Plausibilitätsargument','Ein Argument, das einleuchtend klingt und auf Wahrscheinlichkeit oder gesundem Menschenverstand beruht, aber nicht bewiesen ist.','[[Es liegt nahe]], dass mehr Bewegung auch zu mehr Wohlbefinden führt.','Klingt logisch, hat aber keine Zahlen oder Experten dahinter.'],
+
+['baculum','unser','Argumentum ad baculum','Unseriös: Man droht mit Folgen, statt sachlich zu argumentieren. „baculum“ heißt Stock.','Wenn du nicht zustimmst, [[wirst du die Folgen zu spüren bekommen]].','baculum = Stock = Drohung.'],
+['misericordiam','unser','Argumentum ad misericordiam','Unseriös: Man appelliert ans Mitleid, statt sachlich zu argumentieren.','[[Bitte gib mir eine bessere Note, ich hatte diese Woche so viel Stress.]]','misericordia = Mitleid.'],
+['populum','unser','Argumentum ad populum','Unseriös: Man behauptet, etwas sei richtig, weil die Mehrheit es so sieht. „populus“ heißt Volk.','Das kann nicht falsch sein, [[das denken doch alle so]].','populus = Volk = die Mehrheit.'],
+['hominem','unser','Argumentum ad hominem','Unseriös: Man greift die Person an, statt auf ihr Argument einzugehen. „homo“ heißt Mensch.','[[Was weißt du schon, du hast ja nicht mal einen Abschluss!]]','homo = Mensch = die Person wird angegriffen.'],
+
+['protagonist','fig','Protagonist','Die Hauptfigur einer Geschichte.','In einem Krimi ist [[die Kommissarin, die den Fall lösen will]], die Hauptfigur.',''],
+['antagonist','fig','Antagonist','Der Gegenspieler der Hauptfigur.','Im Krimi ist [[der Täter, der die Kommissarin immer wieder austrickst]], ihr Gegenspieler.',''],
+['charakterisierung','fig','Charakterisierung','Die Beschreibung einer Figur und ihrer Eigenschaften. Direkt: der Erzähler sagt es. Indirekt: man erkennt es an Handlung und Sprache.','Er [[zitterte und wich dem Blick aus]]. Der Autor zeigt so indirekt, dass die Figur ängstlich ist.',''],
+['konstellation','fig','Figurenkonstellation','Die Beziehungen der Figuren zueinander.','Im Schaubild sieht man, [[wer mit wem verwandt, befreundet oder verfeindet ist]].',''],
+
+['hypotaxe','satz','Hypotaxe','Satzbau mit vielen Nebensätzen. Die Sätze sind ineinander verschachtelt.','[[Als die Sonne unterging, die den Himmel rot färbte,]] saß sie am Fenster, [[weil sie nicht schlafen konnte]].','Lange Sätze mit „weil“, „als“, „dass“, „der/die/das“.'],
+['parataxe','satz','Parataxe','Satzbau mit kurzen Hauptsätzen, die einfach aneinandergereiht sind.','[[Es regnete. Wir blieben zu Hause. Wir spielten Karten.]]','Viele kurze Sätze hintereinander.'],
+['ellipse','satz','Ellipse','Ein unvollständiger Satz, bei dem Wörter fehlen, den man aber trotzdem versteht.','Wohin jetzt? [[Nach Hause.]]','Es fehlt etwas, meist das Verb („Wir gehen …“).'],
+['konjunktionen','satz','Konjunktionen','Bindewörter, die Sätze oder Satzteile verbinden, zum Beispiel und, weil, obwohl, aber.','Ich bleibe zu Hause, [[weil]] es regnet, [[und]] ich lerne.','Es geht hier um die einzelnen Bindewörter, nicht um den Satzbau.'],
+['asyndeton','satz','Asyndeton','Eine Aufzählung ohne Bindewörter, nur mit Kommas.','[[Er rannte, schrie, weinte.]]','Statt „und“ stehen nur Kommas.'],
+
+['formell','wort','formell','Sachlich, höflich und gehoben. So schreibt man an Behörden oder hält Reden. Das gilt für den Stil und für die Wortwahl.','[[Sehr geehrte Damen und Herren]], ich möchte Sie [[höflich bitten]], mir [[Auskunft zu erteilen]].','Höfliche Anrede, gehobene Wörter, „Sie“.'],
+['informell','wort','informell','Locker und alltäglich. So spricht man mit Freunden. Das gilt für den Stil und für die Wortwahl.','Hey Anna, [[kannst du mir kurz helfen]]? [[Danke dir!]]','Informell ist der Überbegriff für alles Lockere. Slang und Umgangssprache sind besondere Formen davon.'],
+['neutral','wort','neutral','Wörter ohne Wertung und ohne Gefühl. Sie beschreiben nur.','Er [[geht]] nach Hause.','Zum Vergleich: „Er latscht heim“ wäre informell, „Er begibt sich nach Hause“ formell.'],
+['register','wort','Sprachregister','Die Sprachebene, die man je nach Situation wählt, zum Beispiel formell oder informell.','Vor der Lehrperson spricht man in einem [[anderen Sprachregister]] als mit [[Freunden]].','Register wie bei einer Orgel: Man zieht je nach Situation das passende.'],
+['schriftsprache','wort','Schriftsprache','Die genormte Sprache, wie man sie schreibt: vollständige Sätze und richtige Grammatik.','[[Ich habe heute keine Zeit.]]','Zum Vergleich der Dialekt: „I hob heit koa Zeit.“'],
+['jargon','wort','Jargon','Die Fachsprache eines Berufs oder Fachbereichs. Außenstehende verstehen sie oft nicht.','Die Ärztin sagt: „Der Patient zeigt eine [[Hypertonie]].“ Gemeint ist: hoher Blutdruck.','Jargon: Fachwörter eines Berufs.'],
+['dialekt','wort','Dialekt','Eine Sprechweise, die zu einer Region gehört, mit eigenen Wörtern, Lauten und Grammatik.','[[I hob heit koa Zeit.]]','Dialekt gehört zu einer Region.'],
+['soziolekt','wort','Soziolekt','Die Sprechweise einer bestimmten gesellschaftlichen Gruppe, zum Beispiel einer Szene, eines Hobbys oder einer Altersgruppe.','Skater unter sich: „Der [[Kickflip]] war [[sick]], der [[Spot]] ist mega.“','Soziolekt gehört zu einer Gruppe, Dialekt zu einer Region.'],
+['slang','wort','Slang','Sehr lockere Sprechweise mit eigenen Ausdrücken, die sich schnell ändert.','„Das ist [[mega krass]], [[Alter]]!“','Locker, auffällig und kurzlebig.'],
+['jugendsprache','wort','Jugendsprache','Die Sprechweise von Jugendlichen mit neuen Wörtern, die oft aus dem Internet oder dem Englischen kommen.','„Der Auftritt war voll [[cringe]], ich bin [[safe]] nicht nochmal hingegangen.“','Jugendsprache ist der Slang der Jugendlichen.'],
+['umgangssprache','wort','Umgangssprache','Die Alltagssprache im Gespräch. Sie ist nicht falsch, aber weniger ordentlich als die Schriftsprache.','„Ich [[hab]] keinen [[Bock]] mehr, das ist [[echt]] nervig.“','Verschluckte Endungen („hab“) und lockere Wörter („Bock“).'],
+['anglizismen','wort','Anglizismen','Wörter, die aus dem Englischen übernommen wurden.','Wir haben morgen ein [[Meeting]] und müssen die Folien noch [[downloaden]].','Ein Anglizismus ist ein Fremdwort, das aus dem Englischen kommt.'],
+['fremdwoerter','wort','Fremdwörter','Wörter, die aus einer anderen Sprache stammen und noch als „fremd“ erkennbar sind.','Die [[Prognose]] für morgen sagt Regen voraus.','Prognose kommt aus dem Griechischen. Bei Wörtern aus dem Englischen sagt man Anglizismus.'],
+['wortfeld','wort','Wortfeld','Eine Gruppe von Wörtern, die zum selben Themenbereich gehören.','[[rennen, laufen, sprinten, joggen]] gehören zum Wortfeld „sich schnell fortbewegen“.','Mehrere Wörter zu einem Thema. Synonyme sind Wörter mit gleicher Bedeutung.'],
+['assoziationen','wort','Assoziationen','Gedanken und Bilder, die bei einem Wort automatisch im Kopf entstehen.','Beim Wort „Winter“ denkt man an [[Schnee, Kälte und Weihnachten]].','Assoziationen: was einem einfällt. Konnotation: wie ein Wort klingt (gut oder schlecht).'],
+['konnotationen','wort','Konnotationen','Die gefühlsmäßige Nebenbedeutung eines Wortes zusätzlich zur Grundbedeutung.','„sparsam“ klingt [[positiv]], „geizig“ klingt [[negativ]], obwohl beide Wörter Ähnliches meinen.','Positiv oder negativ gefärbt.'],
+['neologismen','wort','Neologismen','Neu geschaffene Wörter.','Das Wort „[[Wutbürger]]“ wurde erst vor einigen Jahren neu geprägt.','neo = neu.'],
+['archaismus','wort','Archaismus','Ein veraltetes Wort, das heute kaum noch benutzt wird.','„[[Fürwahr]], das war ein mutiger Streich!“',''],
+
+['hyperbel','rhet','Hyperbel','Eine starke Übertreibung.','Ich habe dir das schon [[tausendmal]] gesagt!',''],
+['litotes','rhet','Litotes','Man verneint das Gegenteil und sagt damit etwas abgeschwächt, oft aber sogar nachdrücklich.','Das Essen war [[nicht schlecht]].','„nicht schlecht“ heißt eigentlich gut. Eine Verneinung des Gegenteils.'],
+['metapher','rhet','Metapher','Ein bildlicher Ausdruck: Ein Wort wird auf etwas anderes übertragen, ohne „wie“.','Die Zeit [[läuft davon]].','Bild ohne „wie“.'],
+['vergleich','rhet','Vergleich','Zwei Dinge werden mit „wie“ oder „als“ miteinander verglichen.','Er ist [[stark wie ein Bär]].','Mit „wie“ oder „als ob“.'],
+['euphemismus','rhet','Euphemismus','Eine beschönigende Umschreibung für etwas Unangenehmes.','Er ist [[von uns gegangen]].','Klingt freundlicher, als die Sache ist.'],
+['ironie','rhet','Ironie','Man sagt das Gegenteil von dem, was man meint, mit spöttischem Unterton.','Bei strömendem Regen sagt jemand: „[[Was für ein herrliches Wetter!]]“','Ironie: Das Gegenteil sagen. Sarkasmus: Es ist bissig und verletzend.'],
+['sarkasmus','rhet','Sarkasmus','Eine besonders bissige, verletzende Form der Ironie.','Nach dem dritten Fehler: „[[Wow, du bist wirklich ein Genie, danke für nichts!]]“','Sarkasmus tut weh. Ironie ist milder.'],
+['synonyme','rhet','Synonyme','Wörter mit gleicher oder sehr ähnlicher Bedeutung.','„[[schön]]“ und „[[hübsch]]“','Zwei Wörter, ein Sinn.'],
+
+['epoche','schluss','Epochenbezug','Die Einordnung des Textes in eine Epoche (zum Beispiel Romantik oder Aufklärung) samt typischer Merkmale.','Die Betonung der Gefühle im Gedicht ist [[typisch für die Romantik]].',''],
+['intention','schluss','Intention','Die Absicht des Autors: Was möchte er mit dem Text erreichen?','Der Autor will [[die Leser zum Umdenken beim Konsumverhalten bewegen]].','Frage dich: Was soll beim Leser passieren?']
+];
+
+/* Begriffe, die leicht verwechselt werden: nie zusammen als Antwortmöglichkeiten */
+var GROUPS=[
+ ['informell','umgangssprache','slang','jugendsprache','soziolekt'],
+ ['register','formell','informell','schriftsprache','neutral'],
+ ['formell','schriftsprache','neutral'],
+ ['informell','neutral'],
+ ['ironie','sarkasmus'],
+ ['parataxe','asyndeton','ellipse'],
+ ['fremdwoerter','anglizismen','neologismen'],
+ ['wortfeld','synonyme'],
+ ['assoziationen','konnotationen'],
+ ['hoehepunkt','wendepunkt','spannungsbogen'],
+ ['gliederung','klassisch','sinnabschnitte'],
+ ['fakten','autoritaet','plausibel'],
+ ['hypotaxe','konjunktionen'],
+ ['entstehung','kontext'],
+ ['jargon','soziolekt'],
+ ['metapher','euphemismus'],
+ ['metapher','vergleich']
+];
+/*END*/
+
+var CARDS=RAW.map(function(r){return {id:r[0],topic:r[1],term:r[2],def:r[3],ex:r[4],tip:r[5]||''};});
+var byId={}, EXCL={};
+CARDS.forEach(function(c){byId[c.id]=c;EXCL[c.id]={};});
+GROUPS.forEach(function(g){g.forEach(function(a){g.forEach(function(b){if(a!==b){EXCL[a][b]=true;}});});});
+function conflict(a,b){return !!(EXCL[a.id][b.id]||EXCL[b.id][a.id]);}
+
+/* Hilfsfunktionen */
+function $(s,r){return (r||document).querySelector(s);}
+function $$(s,r){return Array.prototype.slice.call((r||document).querySelectorAll(s));}
+function shuffle(a){for(var i=a.length-1;i>0;i--){var j=Math.floor(Math.random()*(i+1));var t=a[i];a[i]=a[j];a[j]=t;}return a;}
+function esc(s){return String(s).replace(/[&<>"]/g,function(m){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[m];});}
+function hl(s){return esc(s).replace(/\[\[(.+?)\]\]/g,'<mark>$1</mark>');}
+function plain(s){return s.replace(/\[\[|\]\]/g,'');}
+function topicLabel(k){for(var i=0;i<TOPICS.length;i++){if(TOPICS[i].k===k){return TOPICS[i].l;}}return '';}
+
+/* Speicher (nur dieser Browser) */
+var KEY='textanalyse-trainer-v1';
+var store={levels:{},best:0};
+try{
+  var raw=localStorage.getItem(KEY);
+  if(raw){var p=JSON.parse(raw);if(p&&p.levels){store={levels:p.levels,best:p.best||0};}}
+}catch(e){}
+function save(){try{localStorage.setItem(KEY,JSON.stringify(store));}catch(e){}}
+function lvl(id){return store.levels[id]||0;}
+function setLvl(id,n){store.levels[id]=Math.max(0,Math.min(3,n));save();renderRuler();}
+
+/* Zustand */
+var S={tab:'cards',sel:{},front:'term',queue:[],total:0,flipped:false,seen:false,qmode:'mix',quiz:null,search:'',confirmReset:false};
+function selCount(){return Object.keys(S.sel).length;}
+function pool(){var n=selCount();return n?CARDS.filter(function(c){return S.sel[c.topic];}):CARDS;}
+
+/* Fortschrittslineal */
+function renderRuler(){
+  var sure=CARDS.filter(function(c){return lvl(c.id)>=2;}).length;
+  var pct=Math.round(sure/CARDS.length*100);
+  $('#fill').style.width=pct+'%';
+  $('#progTxt').textContent=sure+' von '+CARDS.length;
+  $('#ruler').setAttribute('aria-valuenow',String(pct));
+}
+
+/* Themenwahl */
+function renderTopics(){
+  var n=selCount();
+  $('#tsum').innerHTML='<span>'+(n?(n+(n===1?' Thema':' Themen')):'Alle Themen')+'</span><span class="cnt">'+pool().length+' Begriffe · ändern</span>';
+  var h='<button class="chip" data-act="topic" data-v="all" aria-pressed="'+(n===0)+'">Alle</button>';
+  TOPICS.forEach(function(t){h+='<button class="chip" data-act="topic" data-v="'+t.k+'" aria-pressed="'+(!!S.sel[t.k])+'">'+esc(t.l)+'</button>';});
+  $('#chips').innerHTML=h;
+}
+function topicsChanged(){
+  renderTopics();
+  buildQueue(false);
+  if(S.tab==='cards'){renderCards();}
+  else if(S.tab==='quiz'){if(!S.quiz){renderQuiz();}}
+  else{renderListBody();}
+}
+
+/* Tabs */
+function show(tab){
+  S.tab=tab;
+  ['cards','quiz','list'].forEach(function(t){$('#tab-'+t).setAttribute('aria-selected',String(t===tab));});
+  if(tab==='cards'){renderCards();}
+  else if(tab==='quiz'){renderQuiz();}
+  else{renderListView();}
+}
+
+/* ---------- Karteikarten ---------- */
+function buildQueue(all){
+  var lv=[[],[],[],[]];
+  pool().forEach(function(c){if(all||lvl(c.id)<2){lv[lvl(c.id)].push(c.id);}});
+  S.queue=[];
+  lv.forEach(function(a){S.queue=S.queue.concat(shuffle(a));});
+  S.total=S.queue.length;
+  S.flipped=false;S.seen=false;
+}
+function dots(n){
+  var h='<span class="dots" role="img" aria-label="Sicherheit '+n+' von 3">';
+  for(var i=0;i<3;i++){h+='<i class="'+(i<n?'on':'')+'"></i>';}
+  return h+'</span>';
+}
+function renderCards(){
+  var v=$('#view');
+  var seg='<div class="bar"><div class="seg" role="group" aria-label="Vorderseite">'+
+    '<button data-act="front" data-v="term" aria-pressed="'+(S.front==='term')+'">Begriff zuerst</button>'+
+    '<button data-act="front" data-v="ex" aria-pressed="'+(S.front==='ex')+'">Beispiel zuerst</button></div>'+
+    '<span class="count">'+(S.queue.length?('Noch '+S.queue.length+(S.queue.length===1?' Karte':' Karten')):'')+'</span></div>';
+  if(!S.queue.length){v.innerHTML=seg+finishHTML();return;}
+  var c=byId[S.queue[0]];
+  var head='<div class="fhead"><span class="topic">'+esc(topicLabel(c.topic))+'</span>'+dots(lvl(c.id))+'</div>';
+  var frontBody=S.front==='term'
+    ? '<p class="big">'+esc(c.term)+'</p><p class="hint">Antippen zum Umdrehen</p>'
+    : '<p class="eyebrow">Welcher Begriff ist das?</p><p class="hand">'+esc(plain(c.ex))+'</p><p class="hint">Antippen zum Umdrehen</p>';
+  var backBody='<p class="big small">'+esc(c.term)+'</p><p class="def">'+esc(c.def)+'</p><p class="eyebrow">Beispiel</p><p class="hand">'+hl(c.ex)+'</p>'+(c.tip?'<p class="tip"><b>Merke:</b> '+esc(c.tip)+'</p>':'');
+  v.innerHTML=seg+
+    '<div class="stage"><div class="fc" id="fc" role="button" tabindex="0" aria-pressed="false" aria-label="Karteikarte, umdrehen mit Leertaste">'+
+      '<div class="face front" aria-hidden="false">'+head+'<div class="fbody">'+frontBody+'</div></div>'+
+      '<div class="face back" aria-hidden="true">'+head+'<div class="fbody">'+backBody+'</div></div>'+
+    '</div></div>'+
+    '<div class="row"><button class="btn again" data-act="again" disabled>Nochmal</button><button class="btn good" data-act="know" disabled>Weiß ich</button></div>'+
+    '<p class="keys">Tastatur: Leertaste dreht um, 1 oder Pfeil links für „Nochmal“, 2 oder Pfeil rechts für „Weiß ich“. Eine Karte gilt als gelernt, wenn du sie zweimal richtig hattest.</p>';
+}
+function finishHTML(){
+  var none=S.total===0;
+  return '<div class="panel"><p class="pen">'+(none?'Alles sicher!':'Stapel geschafft!')+'</p>'+
+    '<p>'+(none?'Alle Begriffe dieser Auswahl hast du schon gelernt.':('Du hast '+S.total+(S.total===1?' Karte':' Karten')+' durchgearbeitet.'))+'</p>'+
+    '<div class="row"><button class="btn primary" data-act="restart">Alle Karten nochmal</button><button class="btn" data-act="tab" data-v="quiz">Zum Quiz</button></div></div>';
+}
+function flip(){
+  var fc=$('#fc');if(!fc){return;}
+  S.flipped=!S.flipped;S.seen=true;
+  fc.classList.toggle('flipped',S.flipped);
+  fc.setAttribute('aria-pressed',String(S.flipped));
+  var f=$('.face.front',fc),b=$('.face.back',fc);
+  f.setAttribute('aria-hidden',String(S.flipped));
+  b.setAttribute('aria-hidden',String(!S.flipped));
+  $$('[data-act="again"],[data-act="know"]').forEach(function(btn){btn.disabled=false;});
+}
+function rate(ok){
+  if(!S.seen||!S.queue.length){return;}
+  var id=S.queue.shift();
+  if(ok){setLvl(id,lvl(id)+1);}
+  else{setLvl(id,0);S.queue.splice(Math.min(3,S.queue.length),0,id);}
+  S.flipped=false;S.seen=false;
+  renderCards();
+  var fc=$('#fc');if(fc){fc.focus({preventScroll:true});}
+}
+
+/* ---------- Quiz ---------- */
+function makeQ(card,dir){
+  function valid(c){return c.id!==card.id&&!conflict(card,c);}
+  var same=shuffle(CARDS.filter(function(c){return valid(c)&&c.topic===card.topic;}));
+  var other=shuffle(CARDS.filter(function(c){return valid(c)&&c.topic!==card.topic;}));
+  var d=same.slice(0,3);
+  var i=0;
+  while(d.length<3&&i<other.length){d.push(other[i]);i++;}
+  var opts=shuffle([card].concat(d)).map(function(c){return c.id;});
+  return {answer:card.id,dir:dir,options:opts,picked:null};
+}
+function startQuiz(ids){
+  var cards;
+  if(ids){cards=ids.map(function(i){return byId[i];});}
+  else{
+    var p=shuffle(pool().slice());
+    p.sort(function(a,b){return lvl(a.id)-lvl(b.id);});
+    cards=shuffle(p.slice(0,Math.min(10,p.length)));
+  }
+  var qs=cards.map(function(c){
+    var dir=S.qmode==='mix'?(Math.random()<0.5?'ex2term':'term2ex'):S.qmode;
+    return makeQ(c,dir);
+  });
+  S.quiz={qs:qs,i:0,score:0,streak:0,maxStreak:0,missed:[],retry:!!ids,newBest:false};
+  renderQuiz();
+}
+function grade(p){
+  if(p>=87.5){return [1,'Sehr gut'];}
+  if(p>=75){return [2,'Gut'];}
+  if(p>=62.5){return [3,'Befriedigend'];}
+  if(p>=50){return [4,'Genügend'];}
+  return [5,'Nicht genügend'];
+}
+function renderQuiz(){
+  var v=$('#view');
+  var Q=S.quiz;
+  if(!Q){
+    var n=Math.min(10,pool().length);
+    v.innerHTML='<div class="panel"><h2>Quiz</h2>'+
+      '<p>'+n+' Fragen aus '+pool().length+' Begriffen. Begriffe, die du noch nicht sicher kannst, kommen zuerst.</p>'+
+      '<div class="seg" role="group" aria-label="Fragetyp">'+
+        '<button data-act="qmode" data-v="mix" aria-pressed="'+(S.qmode==='mix')+'">Gemischt</button>'+
+        '<button data-act="qmode" data-v="ex2term" aria-pressed="'+(S.qmode==='ex2term')+'">Beispiel → Begriff</button>'+
+        '<button data-act="qmode" data-v="term2ex" aria-pressed="'+(S.qmode==='term2ex')+'">Begriff → Beispiel</button>'+
+      '</div>'+
+      '<div class="row"><button class="btn primary" data-act="startquiz">Quiz starten</button></div>'+
+      (store.best?'<p class="muted">Bestes Ergebnis: '+store.best+' %</p>':'')+
+    '</div>';
+    return;
+  }
+  if(Q.i>=Q.qs.length){v.innerHTML=resultHTML();return;}
+  var q=Q.qs[Q.i],c=byId[q.answer],done=q.picked!==null,ok=q.picked===q.answer;
+  var segs='<div class="segs" aria-hidden="true">'+Q.qs.map(function(x,k){
+    var cls=x.picked!==null?(x.picked===x.answer?'r':'w'):(k===Q.i?'cur':'');
+    return '<span class="'+cls+'"></span>';
+  }).join('')+'</div>';
+  var head='<div class="qhead"><b>Frage '+(Q.i+1)+' von '+Q.qs.length+'</b><span class="count">Richtig '+Q.score+' · Serie '+Q.streak+'</span></div>';
+  var prompt;
+  if(q.dir==='ex2term'){
+    prompt='<div class="qcard"><p class="eyebrow">Beispiel</p><p class="sample">'+(done?hl(c.ex):esc(plain(c.ex)))+'</p><p class="ask">Welcher Begriff ist das?</p></div>';
+  }else{
+    prompt='<div class="qcard"><p class="eyebrow">Begriff</p><p class="termbig">'+esc(c.term)+'</p><p class="ask">Welches Beispiel passt dazu?</p></div>';
+  }
+  var opts='<div class="opts">'+q.options.map(function(id,k){
+    var o=byId[id],isAns=id===q.answer,isPick=id===q.picked;
+    var cls='opt';
+    if(done){cls+=isAns?' right':(isPick?' wrong':' dim');}
+    var txt,tag='';
+    if(q.dir==='ex2term'){txt=esc(o.term);}
+    else{
+      txt=(done&&isAns)?hl(o.ex):esc(plain(o.ex));
+      if(done){tag='<span class="tag">'+esc(o.term)+'</span>';}
+    }
+    return '<button class="'+cls+'" data-act="pick" data-id="'+id+'"'+(done?' disabled':'')+'><span class="num">'+(k+1)+'</span><span class="otxt'+(q.dir==='ex2term'?' bold':'')+'">'+txt+tag+'</span></button>';
+  }).join('')+'</div>';
+  var fb='';
+  if(done){
+    fb='<div class="fb '+(ok?'good':'bad')+'"><p class="pen">'+(ok?'Richtig!':'Nicht ganz.')+'</p>'+
+      (ok?'':'<p>Richtig ist <b>'+esc(c.term)+'</b>.</p>')+
+      '<p class="def">'+esc(c.def)+'</p>'+
+      (c.tip?'<p class="tip"><b>Merke:</b> '+esc(c.tip)+'</p>':'')+
+      '<div class="row"><button class="btn primary" id="nextBtn" data-act="next">'+(Q.i+1>=Q.qs.length?'Ergebnis anzeigen':'Weiter')+'</button></div></div>';
+  }
+  v.innerHTML=head+segs+prompt+opts+fb;
+}
+function pick(id){
+  var Q=S.quiz;if(!Q||Q.i>=Q.qs.length){return;}
+  var q=Q.qs[Q.i];if(q.picked!==null){return;}
+  q.picked=id;
+  if(id===q.answer){Q.score++;Q.streak++;Q.maxStreak=Math.max(Q.maxStreak,Q.streak);setLvl(q.answer,lvl(q.answer)+1);}
+  else{Q.streak=0;Q.missed.push(q.answer);setLvl(q.answer,0);}
+  renderQuiz();
+  var nb=$('#nextBtn');if(nb){nb.focus({preventScroll:true});}
+}
+function nextQ(){
+  var Q=S.quiz;if(!Q){return;}
+  Q.i++;
+  if(Q.i>=Q.qs.length&&!Q.retry){
+    var pct=Math.round(Q.score/Q.qs.length*100);
+    if(pct>store.best){store.best=pct;Q.newBest=true;save();}
+  }
+  renderQuiz();
+  window.scrollTo(0,0);
+}
+function resultHTML(){
+  var Q=S.quiz,n=Q.qs.length,p=Q.score/n*100,g=grade(p);
+  var missed=[];Q.missed.forEach(function(id){if(missed.indexOf(id)<0){missed.push(id);}});
+  var h='<div class="panel"><div class="grade-wrap"><span class="grade" role="img" aria-label="Note '+g[0]+'">'+g[0]+'</span><div>'+
+    '<p class="pen">'+g[1]+'</p><p>'+Q.score+' von '+n+' richtig · längste Serie '+Q.maxStreak+'</p>'+
+    (Q.retry?'':'<p class="muted">Bestes Ergebnis: '+store.best+' %'+(Q.newBest?' (neuer Rekord)':'')+'</p>')+
+    '<p class="muted">Notenschlüssel: 87,5 / 75 / 62,5 / 50 %</p></div></div>';
+  if(missed.length){
+    h+='<h3>Das solltest du nochmal ansehen</h3>'+missed.map(function(id){
+      var c=byId[id];
+      return '<article class="miss"><h4>'+esc(c.term)+'</h4><p>'+esc(c.def)+'</p><p class="hand">'+hl(c.ex)+'</p></article>';
+    }).join('');
+  }else{
+    h+='<p>Kein einziger Fehler.</p>';
+  }
+  h+='<div class="row">'+
+    (missed.length?'<button class="btn primary" data-act="retry">Fehler wiederholen</button>':'')+
+    '<button class="btn'+(missed.length?'':' primary')+'" data-act="startquiz">Neue Runde</button>'+
+    '<button class="btn" data-act="tab" data-v="cards">Zu den Karteikarten</button></div></div>';
+  return h;
+}
+
+/* ---------- Übersicht ---------- */
+function renderListView(){
+  $('#view').innerHTML='<div class="search"><label class="sr" for="q">Begriff suchen</label><input id="q" type="search" placeholder="Begriff suchen, zum Beispiel Ironie" value="'+esc(S.search)+'" autocomplete="off"></div>'+
+    '<div id="list"></div><div class="reset" id="resetArea"></div>'+
+    '<p class="note">Dein Fortschritt wird nur in diesem Browser gespeichert.</p>';
+  renderListBody();renderReset();
+}
+function renderListBody(){
+  var el=$('#list');if(!el){return;}
+  var q=S.search.trim().toLowerCase();
+  var cards=pool().filter(function(c){return !q||c.term.toLowerCase().indexOf(q)>=0||c.def.toLowerCase().indexOf(q)>=0;});
+  if(!cards.length){el.innerHTML='<p class="empty">Nichts gefunden.</p>';return;}
+  var h='';
+  TOPICS.forEach(function(t){
+    var cs=cards.filter(function(c){return c.topic===t.k;});
+    if(!cs.length){return;}
+    h+='<section class="group"><h3>'+esc(t.l)+'</h3>'+cs.map(function(c){
+      return '<details class="term"><summary><span>'+esc(c.term)+'</span>'+dots(lvl(c.id))+'</summary><div class="body"><p>'+esc(c.def)+'</p><p class="hand">'+hl(c.ex)+'</p>'+(c.tip?'<p class="tip"><b>Merke:</b> '+esc(c.tip)+'</p>':'')+'</div></details>';
+    }).join('')+'</section>';
+  });
+  el.innerHTML=h;
+}
+function renderReset(){
+  var el=$('#resetArea');if(!el){return;}
+  el.innerHTML=S.confirmReset
+    ? '<span>Alle Lernstände löschen?</span><button class="btn quiet" data-act="resetyes">Ja, zurücksetzen</button><button class="btn quiet" data-act="resetno">Abbrechen</button>'
+    : '<button class="btn quiet" data-act="reset">Fortschritt zurücksetzen</button>';
+}
+
+/* ---------- Ereignisse ---------- */
+document.addEventListener('click',function(e){
+  var t=e.target.closest('[data-act]');
+  if(!t){
+    var fcEl=e.target.closest('#fc');
+    if(fcEl){flip();}
+    return;
+  }
+  var a=t.getAttribute('data-act'),v=t.getAttribute('data-v');
+  if(a==='tab'){show(v);}
+  else if(a==='topic'){
+    if(v==='all'){S.sel={};}
+    else if(S.sel[v]){delete S.sel[v];}
+    else{S.sel[v]=true;}
+    topicsChanged();
+  }
+  else if(a==='front'){S.front=v;S.flipped=false;S.seen=false;renderCards();}
+  else if(a==='again'){rate(false);}
+  else if(a==='know'){rate(true);}
+  else if(a==='restart'){buildQueue(true);renderCards();var fc=$('#fc');if(fc){fc.focus({preventScroll:true});}}
+  else if(a==='qmode'){S.qmode=v;renderQuiz();}
+  else if(a==='startquiz'){startQuiz();}
+  else if(a==='retry'){startQuiz(S.quiz.missed.filter(function(id,i,arr){return arr.indexOf(id)===i;}));}
+  else if(a==='pick'){pick(t.getAttribute('data-id'));}
+  else if(a==='next'){nextQ();}
+  else if(a==='reset'){S.confirmReset=true;renderReset();}
+  else if(a==='resetno'){S.confirmReset=false;renderReset();}
+  else if(a==='resetyes'){
+    store.levels={};store.best=0;save();S.confirmReset=false;
+    renderRuler();renderListBody();renderReset();buildQueue(false);
+  }
+});
+document.addEventListener('input',function(e){
+  if(e.target&&e.target.id==='q'){S.search=e.target.value;renderListBody();}
+});
+document.addEventListener('keydown',function(e){
+  var tg=e.target;
+  if(tg&&(tg.tagName==='INPUT'||tg.tagName==='TEXTAREA')){return;}
+  if(e.ctrlKey||e.metaKey||e.altKey){return;}
+  if(tg&&tg.id==='fc'&&(e.key===' '||e.key==='Enter')){e.preventDefault();flip();return;}
+  if(S.tab==='cards'&&S.seen&&S.queue.length){
+    if(e.key==='ArrowLeft'||e.key==='1'){e.preventDefault();rate(false);}
+    else if(e.key==='ArrowRight'||e.key==='2'){e.preventDefault();rate(true);}
+  }else if(S.tab==='quiz'&&S.quiz&&S.quiz.i<S.quiz.qs.length){
+    var q=S.quiz.qs[S.quiz.i];
+    if(q.picked===null&&/^[1-4]$/.test(e.key)){pick(q.options[Number(e.key)-1]);}
+  }
+});
+
+/* Start */
+renderTopics();
+buildQueue(false);
+renderRuler();
+show('cards');
+})();
+</script>
+
+</body></html>
