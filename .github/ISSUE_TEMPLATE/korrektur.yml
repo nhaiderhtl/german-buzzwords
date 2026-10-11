@@ -1,0 +1,33 @@
+name: Korrektur
+description: Fehler auf einer Karteikarte oder im Quiz melden
+title: "Korrektur: "
+labels: ["korrektur"]
+body:
+  - type: markdown
+    attributes:
+      value: Danke für deine Meldung! Die Felder wurden von der Lernseite ausgefüllt. Kurz prüfen und unten auf **Create** klicken.
+  - type: input
+    id: karte
+    attributes:
+      label: Karte
+    validations:
+      required: true
+  - type: input
+    id: bereich
+    attributes:
+      label: Was ist falsch?
+  - type: textarea
+    id: problem
+    attributes:
+      label: Was stimmt nicht?
+    validations:
+      required: true
+  - type: textarea
+    id: vorschlag
+    attributes:
+      label: Wie wäre es richtig?
+  - type: textarea
+    id: kontext
+    attributes:
+      label: So sah es beim Melden aus
+      description: Wird automatisch ausgefüllt.
