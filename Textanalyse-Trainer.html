@@ -529,11 +529,13 @@ function flip(){
   $('.face.back',fc).setAttribute('aria-hidden',String(!S.flipped));
   $$('[data-act="again"],[data-act="know"]').forEach(function(btn){btn.disabled=false;});
 }
+/* „Nochmal“-Karten kommen erst nach 10 bis 14 anderen Karten wieder (bei kleinem Stapel ans Ende) */
+var AGAIN_GAP=10;
 function rate(ok){
   if(!S.seen||!S.queue.length){return;}
   var id=S.queue.shift();
   if(ok){setLvl(id,lvl(id)+1);}
-  else{setLvl(id,0);S.queue.splice(Math.min(3,S.queue.length),0,id);}
+  else{setLvl(id,0);S.queue.splice(Math.min(AGAIN_GAP+Math.floor(Math.random()*5),S.queue.length),0,id);}
   S.flipped=false;S.seen=false;
   renderCards();
   var fc=$('#fc');if(fc){fc.focus({preventScroll:true});}
